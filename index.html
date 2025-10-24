@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>Phaser 球球（可亂動＋RGB/HSB 範圍）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  <style>
+    html,body{margin:0;height:100%;background:#0b1020;color:#ecf0ff;font-family:Inter, Noto Sans TC, system-ui;}
+    #game{position:fixed;inset:0;}
+    .panel{
+      position:fixed; right:12px; top:12px; width:320px; max-height:calc(100vh - 24px);
+      background:rgba(16,22,53,.7); backdrop-filter:blur(8px); border:1px solid rgba(34,211,238,.45);
+      border-radius:16px; padding:14px 14px 10px; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,.35)
+    }
+    .panel h2{margin:0 0 8px;font-size:16px}
+    .row{display:grid;grid-template-columns:78px 1fr 52px; gap:8px; align-items:center; margin:6px 0}
+    input[type="range"]{width:100%}
+    .inline{display:flex; gap:8px; align-items:center; margin:8px 0}
+    .btn{cursor:pointer; background:#1e2a5a; border:1px solid #33457a; color:#ecf0ff; padding:6px 10px; border-radius:10px}
+    .btn:hover{background:#26316b}
+    .swatch{width:24px;height:24px;border-radius:8px;border:1px solid rgba(255,255,255,.35)}
+    .sep{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);margin:10px 0}
+    .subtle{color:#a5b4fc;font-size:12px}
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+
+  <div class="panel">
+    <h2>HSB 範圍</h2>
+    <div class="row"><label>Hue 低</label><input type="range" id="hMin" min="0" max="360" value="0"><output id="hMinOut">0</output></div>
+    <div class="row"><label>Hue 高</label><input type="range" id="hMax" min="0" max="360" value="360"><output id="hMaxOut">360</output></div>
+    <div class="row"><label>Sat 低</label><input type="range" id="sMin" min="0" max="100" value="45"><output id="sMinOut">45%</output></div>
+    <div class="row"><label>Sat 高</label><input type="range" id="sMax" min="0" max="100" value="100"><output id="sMaxOut">100%</output></div>
+    <div class="row"><label>Bri 低</label><input type="range" id="bMin" min="0" max="100" value="60"><output id="bMinOut">60%</output></div>
+    <div class="row"><label>Bri 高</label><input type="range" id="bMax" min="0" max="100" value="100"><output id="bMaxOut">100%</output></div>
+    <div class="sep"></div>
+    <div class="inline"><button class="btn" id="spawn10">新增 10 顆</button><button class="btn" id="clear">清空</button></div>
+    <div class="inline"><span class="subtle">示意色：</span><div class="swatch" id="swatch"></div></div>
+  </div>
+
+  <script>
+    function HSBtoRGB(h, s, v){
+      const c = v * s;
+      const x = c * (1 - Math.abs(((h/60)%2) - 1));
+      const m = v - c;
+      let r=0,g=0,b=0;
+      if (0<=h && h<60){r=c;g=x;b=0;}
+      else if (h<120){r=x;g=c;b=0;}
+      else if (h<180){r=0;g=c;b=x;}
+      else if (h<240){r=0;g=x;b=c;}
+      else if (h<300){r=x;g=0;b=c;}
+      else {r=c;g=0;b=x;}
+      return {r:Math.round((r+m)*255), g:Math.round((g+m)*255), b:Math.round((b+m)*255)};
+    }
+    function RGBtoHex(r,g,b){ return (r<<16)+(g<<8)+b; }
+
+    const state = {hMin:0,hMax:360,sMin:0.45,sMax:1,bMin:0.6,bMax:1};
+
+    class BallsScene extends Phaser.Scene {
+      constructor(){super('BallsScene');}
+      create(){
+        const W=this.scale.width,H=this.scale.height;
+        this.physics.world.setBounds(0,0,W,H,true,true,true,true);
+
+        const g=this.make.graphics({x:0,y:0,add:false});
+        g.fillStyle(0xffffff,1);g.fillCircle(32,32,32);
+        g.generateTexture('dot64',64,64);g.destroy();
+
+        this.balls=this.add.group();
+        for(let i=0;i<120;i++)this.spawnBall();
+
+        this.input.on('pointerdown',p=>{for(let i=0;i<4;i++)this.spawnBall(p.worldX,p.worldY);});
+
+        this.info=this.add.text(12,12,'',{fontFamily:'Inter, Noto Sans TC, system-ui',fontSize:'14px',color:'#ecf0ff'}).setDepth(1000);
+      }
+
+      spawnBall(x,y){
+        const W=this.scale.width,H=this.scale.height;
+        const radius=Phaser.Math.Between(8,18);
+        const h=Phaser.Math.Between(state.hMin,state.hMax);
+        const s=Phaser.Math.FloatBetween(state.sMin,state.sMax);
+        const v=Phaser.Math.FloatBetween(state.bMin,state.bMax);
+        const {r,g,b}=HSBtoRGB(h,s,v);
+        const tintHex=RGBtoHex(r,g,b);
+
+        const spt=this.add.image(
+          x??Phaser.Math.Between(radius,W-radius),
+          y??Phaser.Math.Between(radius,H-radius),
+          'dot64'
+        ).setTint(tintHex).setScale(radius/32);
+
+        this.physics.add.existing(spt);
+        const body=spt.body;
+        body.setCircle(32,0,0);
+        body.setBounce(1);
+        body.setCollideWorldBounds(true);
+        body.setVelocity(Phaser.Math.Between(-80,80),Phaser.Math.Between(-80,80));
+        body.setDrag(30,30);
+        this.balls.add(spt);
+        this.balls.children.iterate(o=>{if(o&&o!==spt)this.physics.add.collider(spt,o);});
+      }
+
+      clearBalls(){
+        this.balls.children.iterate(o=>o?.destroy());
+        this.balls.clear(true);
+      }
+
+      update(time,delta){
+        const fps=(1000/delta)|0;
+        this.info.setText([`Balls: ${this.balls.getLength()}`,`FPS: ${fps}`]);
+        const jitter=12;
+        this.balls.children.iterate(s=>{
+          const b=s.body;
+          b.velocity.x+=Phaser.Math.FloatBetween(-jitter,jitter)*(delta/16.7);
+          b.velocity.y+=Phaser.Math.FloatBetween(-jitter,jitter)*(delta/16.7);
+          const max=160;
+          if(b.velocity.length()>max)b.velocity.scale(max/b.velocity.length());
+        });
+      }
+    }
+
+    const game=new Phaser.Game({
+      type:Phaser.AUTO,
+      parent:'game',
+      backgroundColor:'#0b1020',
+      scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH},
+      physics:{default:'arcade',arcade:{gravity:{y:0},debug:false}},
+      scene:[BallsScene]
+    });
+
+    const $=id=>document.getElementById(id);
+    const hMin=$('hMin'),hMax=$('hMax'),sMin=$('sMin'),sMax=$('sMax'),bMin=$('bMin'),bMax=$('bMax');
+    const hMinOut=$('hMinOut'),hMaxOut=$('hMaxOut'),sMinOut=$('sMinOut'),sMaxOut=$('sMaxOut'),bMinOut=$('bMinOut'),bMaxOut=$('bMaxOut'),swatch=$('swatch');
+
+    function updateHSB(){
+      state.hMin=+hMin.value;state.hMax=+hMax.value;
+      state.sMin=+sMin.value/100;state.sMax=+sMax.value/100;
+      state.bMin=+bMin.value/100;state.bMax=+bMax.value/100;
+      hMinOut.textContent=hMin.value;hMaxOut.textContent=hMax.value;
+      sMinOut.textContent=sMin.value+'%';sMaxOut.textContent=sMax.value+'%';
+      bMinOut.textContent=bMin.value+'%';bMaxOut.textContent=bMax.value+'%';
+      const h=Phaser.Math.Between(state.hMin,state.hMax);
+      const s=Phaser.Math.FloatBetween(state.sMin,state.sMax);
+      const v=Phaser.Math.FloatBetween(state.bMin,state.bMax);
+      const {r,g,b}=HSBtoRGB(h,s,v);
+      swatch.style.background=`rgb(${r},${g},${b})`;
+    }
+    [hMin,hMax,sMin,sMax,bMin,bMax].forEach(e=>e.addEventListener('input',updateHSB));
+    updateHSB();
+
+    $('spawn10').addEventListener('click',()=>{
+      const scene=game.scene.keys['BallsScene'];
+      for(let i=0;i<10;i++)scene.spawnBall();
+    });
+    $('clear').addEventListener('click',()=>{
+      const scene=game.scene.keys['BallsScene'];
+      scene.clearBalls();
+    });
+  </script>
+</body>
+</html>
