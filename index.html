@@ -299,6 +299,7 @@
         g.generateTexture('soft16', 16, 16);
         g.destroy();
       }
+
       create() {
         const W = this.scale.width, H = this.scale.height;
         this.physics.world.setBounds(0, 0, W, H, true, true, true, true);
@@ -307,15 +308,32 @@
         this.balls = this.add.group();
         this._drawGridBG();
 
+        // 初始隨機球
         for (let i = 0; i < 110; i++) this.spawnBall();
 
-        // 左鍵新增
+        // 🆕 筆跡狀態
+        this.brush = {
+          active: false,
+          anchor: { x: 0, y: 0 }, // 從原點一路往目前滑鼠位置鋪
+          acc: 0,                 // 時間累積器
+          interval: 100,          // 每 0.1 秒觸發一次
+          spacing: 24,            // 兩顆之間最小距離（像素）
+          maxPerTick: 7           // 每 0.1 秒最多生成 7 顆
+        };
+
+        // 左鍵：點一下照舊新增 5 顆，同時啟動筆跡（拖曳就會畫）
         this.input.on('pointerdown', p => {
           if (p.rightButtonDown()) return;
           for (let i = 0; i < 5; i++) this.spawnBall(p.worldX, p.worldY);
+
+          // 啟動筆跡
+          this.brush.active = true;
+          this.brush.anchor.x = p.worldX;
+          this.brush.anchor.y = p.worldY;
+          this.brush.acc = 0;
         });
 
-        // 右鍵切材質；Shift+右鍵改色（含尾巴顏色同步）
+        // 右鍵：切材質；Shift+右鍵：改該顆顏色（尾巴同步）
         this.input.mouse.disableContextMenu();
         this.input.on('pointerdown', p => {
           if (!p.rightButtonDown()) return;
@@ -326,12 +344,26 @@
             this.updateTrailTint(s);
           } else {
             const body = s.body;
-            const next = body._mat === 'sand' ? 'water' : body._mat === 'water' ? 'smoke' : 'sand';
-            this.applyMaterial(s, next, /*refreshTrail*/true);
+            const next = body._mat === 'sand' ? 'water' : (body._mat === 'water' ? 'smoke' : 'sand');
+            this.applyMaterial(s, next, /*refreshTrail*/ true);
           }
         });
 
-        // 滾輪尺寸
+        // 滑鼠移動：只要左鍵按住就保持筆跡啟動
+        this.input.on('pointermove', p => {
+          if (p.isDown && !p.rightButtonDown()) {
+            this.brush.active = true;
+          }
+        });
+
+        // 放開左鍵：停筆
+        this.input.on('pointerup', p => {
+          if (!p.rightButtonDown()) {
+            this.brush.active = false;
+          }
+        });
+
+        // 滾輪：以指到的那顆為目標調整尺寸
         this.input.on('wheel', (pointer, over, dx, dy, dz, event) => {
           const s = this.physics.closest(pointer, this.balls.getChildren());
           if (!s) return;
@@ -340,14 +372,25 @@
           event.preventDefault();
         });
 
-        // Info
-        this.info = this.add.text(12, 12, '', { fontFamily: 'Inter, Noto Sans TC, system-ui', fontSize: '14px', color: '#ecf0ff' }).setDepth(1000);
-        this.input.keyboard.on('keydown-P', () => { this.physics.world.isPaused ? this.physics.world.resume() : this.physics.world.pause(); });
+        // FPS / 訊息
+        this.info = this.add.text(12, 12, '', {
+          fontFamily: 'Inter, Noto Sans TC, system-ui',
+          fontSize: '14px',
+          color: '#ecf0ff'
+        }).setDepth(1000);
+
+        // P 鍵暫停/恢復
+        this.input.keyboard.on('keydown-P', () => {
+          this.physics.world.isPaused ? this.physics.world.resume() : this.physics.world.pause();
+        });
+
+        // 視窗尺寸變化
         this.scale.on('resize', ({ width, height }) => {
           this.cameras.main.setSize(width, height);
           this.physics.world.setBounds(0, 0, width, height, true, true, true, true);
         });
       }
+
 
       spawnBall(x, y) {
         const W = this.scale.width, H = this.scale.height;
@@ -398,7 +441,7 @@
         const offset = 32 - radius;
         spr.body.setCircle(radius, offset, offset);
       }
-      
+
       attachOrRefreshTrail(spr, mat) {
         if (spr._emit) { spr._emit.destroy(); spr._emit = null; }
 
@@ -438,6 +481,46 @@
           const b = s.body; const m = b._mat || 'sand';
           Materials[m].tick(this, b, dt);
         });
+        // 🆕 筆跡：每 0.1 秒沿「anchor → 目前滑鼠位置」生成，最多 7 顆
+        if (this.brush.active) {
+          this.brush.acc += dt;
+          if (this.brush.acc >= this.brush.interval) {
+            this.brush.acc -= this.brush.interval;
+
+            const px = this.input.activePointer.worldX;
+            const py = this.input.activePointer.worldY;
+            let ax = this.brush.anchor.x;
+            let ay = this.brush.anchor.y;
+
+            const dx = px - ax;
+            const dy = py - ay;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > 1) {
+              const dirx = dx / dist;
+              const diry = dy / dist;
+
+              let placed = 0;
+              let traveled = 0;
+
+              // 每個 spacing 放一顆，最多 7 顆
+              while (traveled + this.brush.spacing <= dist && placed < this.brush.maxPerTick) {
+                traveled += this.brush.spacing;
+                const x = ax + dirx * traveled;
+                const y = ay + diry * traveled;
+                this.spawnBall(x, y);
+                placed++;
+              }
+
+              // 把錨點推進到最後放置的位置，避免重覆鋪
+              if (placed > 0) {
+                this.brush.anchor.x = ax + dirx * traveled;
+                this.brush.anchor.y = ay + diry * traveled;
+              }
+            }
+          }
+        }
+
       }
 
       _drawGridBG() {
