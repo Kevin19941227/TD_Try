@@ -1,105 +1,32 @@
 <!doctype html>
 <html lang="zh-Hant">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Phaser 3.90｜煙 / 水 / 沙（逐球）＋ 粒子尾巴（新 API）</title>
+  <title>Phaser 3.90｜煙 / 水 / 沙（逐球）＋ 粒子尾巴 + 風偏筆跡</title>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   <style>
-    html,
-    body {
-      margin: 0;
-      height: 100%;
-      background: #0b1020;
-      color: #ecf0ff;
-      font-family: Inter, Noto Sans TC, system-ui;
-    }
-
-    #game {
-      position: fixed;
-      inset: 0
-    }
-
+    html, body { margin: 0; height: 100%; background: #0b1020; color: #ecf0ff; font-family: Inter, Noto Sans TC, system-ui; }
+    #game { position: fixed; inset: 0 }
     .panel {
-      position: fixed;
-      right: 12px;
-      top: 12px;
-      width: 340px;
-      max-height: calc(100vh - 24px);
-      background: rgba(16, 22, 53, .75);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(34, 211, 238, .45);
-      border-radius: 16px;
-      padding: 14px;
-      overflow: auto;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, .35)
+      position: fixed; right: 12px; top: 12px; width: 340px; max-height: calc(100vh - 24px);
+      background: rgba(16,22,53,.75); backdrop-filter: blur(10px);
+      border: 1px solid rgba(34,211,238,.45); border-radius: 16px; padding: 14px; overflow: auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35)
     }
-
-    h2 {
-      margin: 0 0 10px;
-      font-size: 16px
-    }
-
-    .row {
-      display: grid;
-      grid-template-columns: 90px 1fr 52px;
-      gap: 8px;
-      align-items: center;
-      margin: 6px 0
-    }
-
-    .mode-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin: 6px 0 10px
-    }
-
-    .btn {
-      cursor: pointer;
-      background: #1e2a5a;
-      border: 1px solid #33457a;
-      color: #ecf0ff;
-      padding: 6px 10px;
-      border-radius: 10px
-    }
-
-    .btn:hover {
-      background: #26316b
-    }
-
-    .swatch {
-      width: 24px;
-      height: 24px;
-      border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, .35)
-    }
-
-    .sep {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .25), transparent);
-      margin: 10px 0
-    }
-
-    .subtle {
-      color: #a5b4fc;
-      font-size: 12px
-    }
-
-    input[type="range"] {
-      width: 100%
-    }
-
-    .grid2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px
-    }
+    h2 { margin: 0 0 10px; font-size: 16px }
+    .row { display: grid; grid-template-columns: 110px 1fr 60px; gap: 8px; align-items: center; margin: 6px 0 }
+    .mode-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0 10px }
+    .btn { cursor: pointer; background: #1e2a5a; border: 1px solid #33457a; color: #ecf0ff; padding: 6px 10px; border-radius: 10px }
+    .btn:hover { background: #26316b }
+    .swatch { width: 24px; height: 24px; border-radius: 8px; border: 1px solid rgba(255,255,255,.35) }
+    .sep { height: 1px; background: linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent); margin: 10px 0 }
+    .subtle { color: #a5b4fc; font-size: 12px }
+    input[type="range"] { width: 100% }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+    .groupTitle { margin-top: 8px; font-weight: 600; font-size: 13px; color: #c7d2fe }
   </style>
 </head>
-
 <body>
   <div id="game"></div>
 
@@ -113,18 +40,12 @@
 
     <div class="sep"></div>
     <div class="subtle">顏色（HSB 範圍，影響新球）</div>
-    <div class="row"><label>Hue 低</label><input type="range" id="hMin" min="0" max="360" value="28"><output
-        id="hMinOut">28</output></div>
-    <div class="row"><label>Hue 高</label><input type="range" id="hMax" min="0" max="360" value="48"><output
-        id="hMaxOut">48</output></div>
-    <div class="row"><label>Sat 低</label><input type="range" id="sMin" min="0" max="100" value="45"><output
-        id="sMinOut">45%</output></div>
-    <div class="row"><label>Sat 高</label><input type="range" id="sMax" min="0" max="100" value="90"><output
-        id="sMaxOut">90%</output></div>
-    <div class="row"><label>Bri 低</label><input type="range" id="bMin" min="0" max="100" value="60"><output
-        id="bMinOut">60%</output></div>
-    <div class="row"><label>Bri 高</label><input type="range" id="bMax" min="0" max="100" value="95"><output
-        id="bMaxOut">95%</output></div>
+    <div class="row"><label>Hue 低</label><input type="range" id="hMin" min="0" max="360" value="28"><output id="hMinOut">28</output></div>
+    <div class="row"><label>Hue 高</label><input type="range" id="hMax" min="0" max="360" value="48"><output id="hMaxOut">48</output></div>
+    <div class="row"><label>Sat 低</label><input type="range" id="sMin" min="0" max="100" value="45"><output id="sMinOut">45%</output></div>
+    <div class="row"><label>Sat 高</label><input type="range" id="sMax" min="0" max="100" value="90"><output id="sMaxOut">90%</output></div>
+    <div class="row"><label>Bri 低</label><input type="range" id="bMin" min="0" max="100" value="60"><output id="bMinOut">60%</output></div>
+    <div class="row"><label>Bri 高</label><input type="range" id="bMax" min="0" max="100" value="95"><output id="bMaxOut">95%</output></div>
 
     <div class="sep"></div>
     <div class="grid2">
@@ -137,8 +58,23 @@
     </div>
 
     <div class="sep"></div>
+    <div class="groupTitle">筆跡（風偏）參數</div>
+    <div class="row"><label>風力增益</label><input type="range" id="windGain" min="0" max="0.4" step="0.01" value="0.14"><output id="windGainOut">0.14</output></div>
+    <div class="row"><label>風阻尼</label><input type="range" id="windDrag" min="0.70" max="0.98" step="0.01" value="0.86"><output id="windDragOut">0.86</output></div>
+    <div class="row"><label>橫向弧度</label><input type="range" id="cross" min="0" max="0.6" step="0.01" value="0.28"><output id="crossOut">0.28</output></div>
+    <div class="row"><label>最大偏移(px)</label><input type="range" id="maxWind" min="0" max="120" step="1" value="60"><output id="maxWindOut">60</output></div>
+    <div class="row"><label>雜訊擺幅</label><input type="range" id="noiseAmp" min="0" max="1.2" step="0.05" value="0.60"><output id="noiseAmpOut">0.60</output></div>
+
+    <div class="sep"></div>
+    <div class="groupTitle">筆跡產生</div>
+    <div class="row"><label>間距(px)</label><input type="range" id="spacing" min="8" max="60" step="1" value="24"><output id="spacingOut">24</output></div>
+    <div class="row"><label>頻率(s)</label><input type="range" id="interval" min="0.02" max="0.2" step="0.01" value="0.10"><output id="intervalOut">0.10</output></div>
+    <div class="row"><label>每次上限</label><input type="range" id="maxPerTick" min="1" max="12" step="1" value="7"><output id="maxPerTickOut">7</output></div>
+
+    <div class="sep"></div>
     <div class="subtle">
       左鍵新增球（用目前材質）；<br />
+      拖曳＝筆跡（含風偏）；<br />
       右鍵點球＝切材質；<br />
       <b>Shift+右鍵</b>點球＝改該顆顏色；<br />
       <b>滑鼠滾輪</b>指著球＝改該顆尺寸；P 暫停。
@@ -150,9 +86,12 @@
     function HSBtoRGB(h, s, v) {
       const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
       let r = 0, g = 0, b = 0;
-      if (h < 60) { r = c; g = x; b = 0 } else if (h < 120) { r = x; g = c; b = 0 }
-      else if (h < 180) { r = 0; g = c; b = x } else if (h < 240) { r = 0; g = x; b = c }
-      else if (h < 300) { r = x; g = 0; b = c } else { r = c; g = 0; b = x }
+      if (h < 60) { r = c; g = x; b = 0 }
+      else if (h < 120) { r = x; g = c; b = 0 }
+      else if (h < 180) { r = 0; g = c; b = x }
+      else if (h < 240) { r = 0; g = x; b = c }
+      else if (h < 300) { r = x; g = 0; b = c }
+      else { r = c; g = 0; b = x }
       return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
     }
     const RGBhex = (r, g, b) => (r << 16) + (g << 8) + b;
@@ -188,7 +127,7 @@
           return {
             blendMode: 'NORMAL',
             alpha: { start: 0.55, end: 0 },
-            scale: { start: 0.6, end: 0.2 },
+            // scale 會在 attachOrRefreshTrail 裡覆蓋
             speed: { min: 20, max: 70 },
             lifespan: { min: 420, max: 800 },
             gravityY: 280,
@@ -227,7 +166,6 @@
           return {
             blendMode: 'ADD',
             alpha: { start: 0.6, end: 0 },
-            scale: { start: 0.7, end: 0.0 },
             speed: { min: 40, max: 100 },
             lifespan: { min: 360, max: 720 },
             gravityY: 0,
@@ -270,7 +208,6 @@
           return {
             blendMode: 'SCREEN',
             alpha: { start: 0.35, end: 0 },
-            scale: { start: 0.55, end: 1.05 },
             speed: { min: 10, max: 28 },
             lifespan: { min: 900, max: 1500 },
             gravityY: -12,
@@ -303,67 +240,67 @@
       create() {
         const W = this.scale.width, H = this.scale.height;
         this.physics.world.setBounds(0, 0, W, H, true, true, true, true);
-        this.physics.world.gravity.y = 0; // 中性，行為交給材質
+        this.physics.world.gravity.y = 0;
 
         this.balls = this.add.group();
         this._drawGridBG();
 
-        // 初始隨機球
         for (let i = 0; i < 110; i++) this.spawnBall();
 
         // 🆕 筆跡狀態
         this.brush = {
           active: false,
-          anchor: { x: 0, y: 0 }, // 從原點一路往目前滑鼠位置鋪
-          acc: 0,                 // 時間累積器
-          interval: 100,          // 每 0.1 秒觸發一次
-          spacing: 24,            // 兩顆之間最小距離（像素）
-          maxPerTick: 7           // 每 0.1 秒最多生成 7 顆
+          anchor: { x: 0, y: 0 },
+          acc: 0,
+          interval: 100,   // ms
+          spacing: 24,     // px
+          maxPerTick: 7,
+          wind: { x: 0, y: 0 },
+          windGain: 0.14,
+          windDrag: 0.86,
+          cross: 0.28,
+          maxWind: 60,
+          noiseAmp: 0.60
         };
 
-        // 左鍵：點一下照舊新增 5 顆，同時啟動筆跡（拖曳就會畫）
+        // 指標採樣用（估算滑鼠速度）
+        this._ptr = { inited: false, x: 0, y: 0 };
+
+        // 左鍵：點一下新增 + 開筆
         this.input.on('pointerdown', p => {
           if (p.rightButtonDown()) return;
           for (let i = 0; i < 5; i++) this.spawnBall(p.worldX, p.worldY);
-
-          // 啟動筆跡
           this.brush.active = true;
           this.brush.anchor.x = p.worldX;
           this.brush.anchor.y = p.worldY;
           this.brush.acc = 0;
         });
 
-        // 右鍵：切材質；Shift+右鍵：改該顆顏色（尾巴同步）
+        // 右鍵：切材質；Shift+右鍵：改色
         this.input.mouse.disableContextMenu();
         this.input.on('pointerdown', p => {
           if (!p.rightButtonDown()) return;
           const s = this.physics.closest(p, this.balls.getChildren());
           if (!s) return;
-          if (p.event.shiftKey) {
-            this.recolorBall(s);
-            this.updateTrailTint(s);
-          } else {
+          if (p.event.shiftKey) { this.recolorBall(s); this.updateTrailTint(s); }
+          else {
             const body = s.body;
             const next = body._mat === 'sand' ? 'water' : (body._mat === 'water' ? 'smoke' : 'sand');
-            this.applyMaterial(s, next, /*refreshTrail*/ true);
+            this.applyMaterial(s, next, true);
           }
         });
 
-        // 滑鼠移動：只要左鍵按住就保持筆跡啟動
-        this.input.on('pointermove', p => {
-          if (p.isDown && !p.rightButtonDown()) {
-            this.brush.active = true;
-          }
-        });
-
-        // 放開左鍵：停筆
+        this.input.on('pointermove', p => { if (p.isDown && !p.rightButtonDown()) this.brush.active = true; });
         this.input.on('pointerup', p => {
           if (!p.rightButtonDown()) {
             this.brush.active = false;
+            // 收筆時把幾何錨點更新到當前位置，避免下一次一開始拉很長
+            this.brush.anchor.x = p.worldX;
+            this.brush.anchor.y = p.worldY;
           }
         });
 
-        // 滾輪：以指到的那顆為目標調整尺寸
+        // 滾輪：尺寸
         this.input.on('wheel', (pointer, over, dx, dy, dz, event) => {
           const s = this.physics.closest(pointer, this.balls.getChildren());
           if (!s) return;
@@ -372,25 +309,20 @@
           event.preventDefault();
         });
 
-        // FPS / 訊息
+        // Info
         this.info = this.add.text(12, 12, '', {
-          fontFamily: 'Inter, Noto Sans TC, system-ui',
-          fontSize: '14px',
-          color: '#ecf0ff'
+          fontFamily: 'Inter, Noto Sans TC, system-ui', fontSize: '14px', color: '#ecf0ff'
         }).setDepth(1000);
 
-        // P 鍵暫停/恢復
         this.input.keyboard.on('keydown-P', () => {
           this.physics.world.isPaused ? this.physics.world.resume() : this.physics.world.pause();
         });
 
-        // 視窗尺寸變化
         this.scale.on('resize', ({ width, height }) => {
           this.cameras.main.setSize(width, height);
           this.physics.world.setBounds(0, 0, width, height, true, true, true, true);
         });
       }
-
 
       spawnBall(x, y) {
         const W = this.scale.width, H = this.scale.height;
@@ -401,16 +333,20 @@
         const spr = this.add.image(x ?? ri(radius, W - radius), y ?? ri(radius, H - radius), key)
           .setTint(tint).setScale(radius / 32);
         this.physics.add.existing(spr);
-        const body = spr.body; body.setCircle(32, 0, 0).setCollideWorldBounds(true);
+        const body = spr.body;
+
+        // ✅ 碰撞半徑與可視一致
+        const rad = 32 * spr.scale;
+        const off = 32 - rad;
+        body.setCircle(rad, off, off).setCollideWorldBounds(true);
 
         // 材質 + 尾巴
-        this.applyMaterial(spr, state.spawnMaterial, /*refreshTrail*/true);
+        this.applyMaterial(spr, state.spawnMaterial, true);
 
         // 互相碰撞
         this.balls.add(spr);
         this.balls.children.iterate(o => { if (o && o !== spr) this.physics.add.collider(spr, o); });
 
-        // 銷毀保險
         spr.on('destroy', () => { if (spr._emit) { spr._emit.destroy(); spr._emit = null; } });
       }
 
@@ -421,7 +357,6 @@
         body.setBounce(0).setDrag(0, 0);
         delete body._ox; delete body._oy; delete body._spin;
         Materials[mat].applyPreset(body, spr);
-
         if (refreshTrail) this.attachOrRefreshTrail(spr, mat);
       }
 
@@ -429,27 +364,30 @@
         const h = ri(state.hMin, state.hMax), s = rf(state.sMin, state.sMax), v = rf(state.bMin, state.bMax);
         const { r, g, b } = HSBtoRGB(h, s, v);
         spr.setTint(RGBhex(r, g, b));
+        this.updateTrailTint(spr);
       }
 
-      updateTrailTint(spr) {
-        if (spr._emit) { spr._emit.setTint(spr.tintTopLeft); }
-      }
+      updateTrailTint(spr) { if (spr._emit) spr._emit.setTint(spr.tintTopLeft); }
 
       resizeBall(spr, newScale) {
         spr.setScale(newScale);
         const radius = 32 * newScale;
         const offset = 32 - radius;
         spr.body.setCircle(radius, offset, offset);
+        // 同步尾巴大小
+        if (spr._emit) {
+          const baseScale = 4 * spr.scale;
+          spr._emit.setConfig({ scale: { start: baseScale, end: baseScale * 0.5 } });
+        }
       }
 
       attachOrRefreshTrail(spr, mat) {
         if (spr._emit) { spr._emit.destroy(); spr._emit = null; }
-
         const cfg = Materials[mat].trailCfg(spr);
 
-        // 🟢 讓尾巴粒子大小 = 球的大小
-        const baseScale = spr.scale * 20;  // 球的縮放（球半徑/32）
-        cfg.scale = { start: baseScale, end: baseScale * 0.5 }; // 尾巴稍微縮小到一半
+        // ✅ 讓尾巴粒子大小 = 球直徑等比例（soft16 -> 64px 球 => *4）
+        const baseScale = 4 * spr.scale;
+        cfg.scale = { start: baseScale, end: baseScale * 7 };
 
         const e = this.add.particles(0, 0, 'soft16', {
           on: true,
@@ -457,19 +395,13 @@
           followOffset: { x: 0, y: 0 },
           ...cfg
         });
-
         e.setDepth((spr.depth ?? 0) - 1);
         e.setScrollFactor(spr.scrollFactorX ?? 1, spr.scrollFactorY ?? 1);
-
         spr._emit = e;
       }
 
       clearBalls() {
-        // 先把每顆球的尾巴銷毀
-        this.balls.children.iterate(s => {
-          if (s && s._emit) { s._emit.destroy(); s._emit = null; }
-        });
-        // 清碰撞器與球
+        this.balls.children.iterate(s => { if (s && s._emit) { s._emit.destroy(); s._emit = null; } });
         this.physics.world.colliders.destroy();
         this.balls.clear(true, true);
       }
@@ -477,50 +409,64 @@
       update(t, dt) {
         const fps = (1000 / dt) | 0;
         this.info.setText([`Balls: ${this.balls.getLength()}`, `FPS: ${fps}`]);
+
+        // 物理行為
         this.balls.children.iterate(s => {
           const b = s.body; const m = b._mat || 'sand';
           Materials[m].tick(this, b, dt);
         });
-        // 🆕 筆跡：每 0.1 秒沿「anchor → 目前滑鼠位置」生成，最多 7 顆
-        if (this.brush.active) {
-          this.brush.acc += dt;
-          if (this.brush.acc >= this.brush.interval) {
-            this.brush.acc -= this.brush.interval;
 
-            const px = this.input.activePointer.worldX;
-            const py = this.input.activePointer.worldY;
-            let ax = this.brush.anchor.x;
-            let ay = this.brush.anchor.y;
+        // === 先更新風偏 ===
+        const p = this.input.activePointer;
+        const dtSec = dt / 1000;
+        let vx = 0, vy = 0;
+        if (this._ptr.inited) {
+          vx = (p.worldX - this._ptr.x) / (dtSec || 1/60);
+          vy = (p.worldY - this._ptr.y) / (dtSec || 1/60);
+        } else { this._ptr.inited = true; }
+        this._ptr.x = p.worldX; this._ptr.y = p.worldY;
 
-            const dx = px - ax;
-            const dy = py - ay;
+        const br = this.brush;
+        const tnow = this.time.now * 0.001;
+        const noiseX = Math.sin(tnow * 3.1) * br.noiseAmp;
+        const noiseY = Math.cos(tnow * 2.7) * br.noiseAmp;
+        const fx = vx * br.windGain + (-vy) * br.cross * br.windGain + noiseX;
+        const fy = vy * br.windGain + ( vx) * br.cross * br.windGain + noiseY;
+        br.wind.x = br.wind.x * br.windDrag + fx * dtSec;
+        br.wind.y = br.wind.y * br.windDrag + fy * dtSec;
+        const wmag = Math.hypot(br.wind.x, br.wind.y);
+        if (wmag > br.maxWind) { const k = br.maxWind / (wmag || 1); br.wind.x *= k; br.wind.y *= k; }
+
+        // === 再依最新風偏做筆跡鋪球 ===
+        if (br.active) {
+          br.acc += dt;
+          if (br.acc >= br.interval) {
+            br.acc -= br.interval;
+
+            const px = p.worldX, py = p.worldY;
+            let ax = br.anchor.x + br.wind.x;
+            let ay = br.anchor.y + br.wind.y;
+            const dx = px - ax, dy = py - ay;
             const dist = Math.hypot(dx, dy);
 
-            if (dist > 1) {
-              const dirx = dx / dist;
-              const diry = dy / dist;
-
-              let placed = 0;
-              let traveled = 0;
-
-              // 每個 spacing 放一顆，最多 7 顆
-              while (traveled + this.brush.spacing <= dist && placed < this.brush.maxPerTick) {
-                traveled += this.brush.spacing;
+            if (dist >= br.spacing) {
+              const dirx = dx / dist, diry = dy / dist;
+              let placed = 0, traveled = 0;
+              while (traveled + br.spacing <= dist && placed < br.maxPerTick) {
+                traveled += br.spacing;
+                // 可加微飄：+ Phaser.Math.FloatBetween(-wob,wob)；這裡先純幾何
                 const x = ax + dirx * traveled;
                 const y = ay + diry * traveled;
                 this.spawnBall(x, y);
                 placed++;
               }
-
-              // 把錨點推進到最後放置的位置，避免重覆鋪
               if (placed > 0) {
-                this.brush.anchor.x = ax + dirx * traveled;
-                this.brush.anchor.y = ay + diry * traveled;
+                br.anchor.x = ax - br.wind.x + dirx * traveled;
+                br.anchor.y = ay - br.wind.y + diry * traveled;
               }
             }
           }
         }
-
       }
 
       _drawGridBG() {
@@ -556,9 +502,22 @@
     const swatch = $('swatch');
     const els = {
       hMin: $('hMin'), hMax: $('hMax'), sMin: $('sMin'), sMax: $('sMax'), bMin: $('bMin'), bMax: $('bMax'),
-      hMinOut: $('hMinOut'), hMaxOut: $('hMaxOut'), sMinOut: $('sMinOut'), sMaxOut: $('sMaxOut'), bMinOut: $('bMinOut'), bMaxOut: $('bMaxOut')
+      hMinOut: $('hMinOut'), hMaxOut: $('hMaxOut'), sMinOut: $('sMinOut'), sMaxOut: $('sMaxOut'), bMinOut: $('bMinOut'), bMaxOut: $('bMaxOut'),
+      windGain: $('windGain'), windGainOut: $('windGainOut'),
+      windDrag: $('windDrag'), windDragOut: $('windDragOut'),
+      cross: $('cross'), crossOut: $('crossOut'),
+      maxWind: $('maxWind'), maxWindOut: $('maxWindOut'),
+      noiseAmp: $('noiseAmp'), noiseAmpOut: $('noiseAmpOut'),
+      spacing: $('spacing'), spacingOut: $('spacingOut'),
+      interval: $('interval'), intervalOut: $('intervalOut'),
+      maxPerTick: $('maxPerTick'), maxPerTickOut: $('maxPerTickOut'),
     };
-    function clampPair(a, b, lo, hi) { if (+a.value > +b.value) { const t = a.value; a.value = b.value; b.value = t; } a.value = Math.max(lo, Math.min(+a.value, hi)); b.value = Math.max(lo, Math.min(+b.value, hi)); }
+
+    function clampPair(a, b, lo, hi) {
+      if (+a.value > +b.value) { const t = a.value; a.value = b.value; b.value = t; }
+      a.value = Math.max(lo, Math.min(+a.value, hi)); b.value = Math.max(lo, Math.min(+b.value, hi));
+    }
+
     function updateHSB() {
       clampPair(els.hMin, els.hMax, 0, 360); clampPair(els.sMin, els.sMax, 0, 100); clampPair(els.bMin, els.bMax, 0, 100);
       state.hMin = +els.hMin.value; state.hMax = +els.hMax.value;
@@ -573,6 +532,32 @@
     [els.hMin, els.hMax, els.sMin, els.sMax, els.bMin, els.bMax].forEach(e => e.addEventListener('input', updateHSB));
     updateHSB();
 
+    // 風場滑桿
+    function bindBrushSliders() {
+      const s = game.scene.keys['FXScene']; if (!s) return;
+      const br = s.brush;
+
+      els.windGain.addEventListener('input', e => { br.windGain = +e.target.value; els.windGainOut.textContent = e.target.value; });
+      els.windDrag.addEventListener('input', e => { br.windDrag = +e.target.value; els.windDragOut.textContent = e.target.value; });
+      els.cross.addEventListener('input', e => { br.cross = +e.target.value; els.crossOut.textContent = e.target.value; });
+      els.maxWind.addEventListener('input', e => { br.maxWind = +e.target.value; els.maxWindOut.textContent = e.target.value; });
+      els.noiseAmp.addEventListener('input', e => { br.noiseAmp = +e.target.value; els.noiseAmpOut.textContent = e.target.value; });
+
+      els.spacing.addEventListener('input', e => { br.spacing = +e.target.value; els.spacingOut.textContent = e.target.value; });
+      els.interval.addEventListener('input', e => { br.interval = Math.round(+e.target.value * 1000); els.intervalOut.textContent = (+e.target.value).toFixed(2); });
+      els.maxPerTick.addEventListener('input', e => { br.maxPerTick = +e.target.value; els.maxPerTickOut.textContent = e.target.value; });
+
+      // 初始化 output 顯示
+      els.windGainOut.textContent = els.windGain.value;
+      els.windDragOut.textContent = els.windDrag.value;
+      els.crossOut.textContent = els.cross.value;
+      els.maxWindOut.textContent = els.maxWind.value;
+      els.noiseAmpOut.textContent = els.noiseAmp.value;
+      els.spacingOut.textContent = els.spacing.value;
+      els.intervalOut.textContent = (+els.interval.value).toFixed(2);
+      els.maxPerTickOut.textContent = els.maxPerTick.value;
+    }
+
     document.querySelectorAll('input[name="matSpawn"]').forEach(r => {
       r.addEventListener('change', e => { state.spawnMaterial = e.target.value; });
     });
@@ -583,7 +568,14 @@
     $('clear').addEventListener('click', () => {
       const s = game.scene.keys['FXScene']; s.clearBalls();
     });
+
+    // 等場景建好再綁滑桿
+    window.addEventListener('load', () => {
+      const check = setInterval(() => {
+        const s = game.scene.keys['FXScene'];
+        if (s) { clearInterval(check); bindBrushSliders(); }
+      }, 50);
+    });
   </script>
 </body>
-
 </html>
