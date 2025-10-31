@@ -1,32 +1,112 @@
 <!doctype html>
 <html lang="zh-Hant">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Phaser 3.90｜煙 / 水 / 沙（逐球）＋ 粒子尾巴 + 風偏筆跡</title>
+  <title>Phaser 3.90｜煙 / 水 / 沙（逐球）＋ 粒子尾巴 + 風偏筆跡 + 淡出壽命</title>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   <style>
-    html, body { margin: 0; height: 100%; background: #0b1020; color: #ecf0ff; font-family: Inter, Noto Sans TC, system-ui; }
-    #game { position: fixed; inset: 0 }
-    .panel {
-      position: fixed; right: 12px; top: 12px; width: 340px; max-height: calc(100vh - 24px);
-      background: rgba(16,22,53,.75); backdrop-filter: blur(10px);
-      border: 1px solid rgba(34,211,238,.45); border-radius: 16px; padding: 14px; overflow: auto;
-      box-shadow: 0 10px 30px rgba(0,0,0,.35)
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #0b1020;
+      color: #ecf0ff;
+      font-family: Inter, Noto Sans TC, system-ui;
     }
-    h2 { margin: 0 0 10px; font-size: 16px }
-    .row { display: grid; grid-template-columns: 110px 1fr 60px; gap: 8px; align-items: center; margin: 6px 0 }
-    .mode-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0 10px }
-    .btn { cursor: pointer; background: #1e2a5a; border: 1px solid #33457a; color: #ecf0ff; padding: 6px 10px; border-radius: 10px }
-    .btn:hover { background: #26316b }
-    .swatch { width: 24px; height: 24px; border-radius: 8px; border: 1px solid rgba(255,255,255,.35) }
-    .sep { height: 1px; background: linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent); margin: 10px 0 }
-    .subtle { color: #a5b4fc; font-size: 12px }
-    input[type="range"] { width: 100% }
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
-    .groupTitle { margin-top: 8px; font-weight: 600; font-size: 13px; color: #c7d2fe }
+
+    #game {
+      position: fixed;
+      inset: 0
+    }
+
+    .panel {
+      position: fixed;
+      right: 12px;
+      top: 12px;
+      width: 340px;
+      max-height: calc(100vh - 24px);
+      background: rgba(16, 22, 53, .75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(34, 211, 238, .45);
+      border-radius: 16px;
+      padding: 14px;
+      overflow: auto;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .35)
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 16px
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 110px 1fr 60px;
+      gap: 8px;
+      align-items: center;
+      margin: 6px 0
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 6px 0 10px
+    }
+
+    .btn {
+      cursor: pointer;
+      background: #1e2a5a;
+      border: 1px solid #33457a;
+      color: #ecf0ff;
+      padding: 6px 10px;
+      border-radius: 10px
+    }
+
+    .btn:hover {
+      background: #26316b
+    }
+
+    .swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, .35)
+    }
+
+    .sep {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .25), transparent);
+      margin: 10px 0
+    }
+
+    .subtle {
+      color: #a5b4fc;
+      font-size: 12px
+    }
+
+    input[type="range"] {
+      width: 100%
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px
+    }
+
+    .groupTitle {
+      margin-top: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      color: #c7d2fe
+    }
   </style>
 </head>
+
 <body>
   <div id="game"></div>
 
@@ -40,12 +120,18 @@
 
     <div class="sep"></div>
     <div class="subtle">顏色（HSB 範圍，影響新球）</div>
-    <div class="row"><label>Hue 低</label><input type="range" id="hMin" min="0" max="360" value="28"><output id="hMinOut">28</output></div>
-    <div class="row"><label>Hue 高</label><input type="range" id="hMax" min="0" max="360" value="48"><output id="hMaxOut">48</output></div>
-    <div class="row"><label>Sat 低</label><input type="range" id="sMin" min="0" max="100" value="45"><output id="sMinOut">45%</output></div>
-    <div class="row"><label>Sat 高</label><input type="range" id="sMax" min="0" max="100" value="90"><output id="sMaxOut">90%</output></div>
-    <div class="row"><label>Bri 低</label><input type="range" id="bMin" min="0" max="100" value="60"><output id="bMinOut">60%</output></div>
-    <div class="row"><label>Bri 高</label><input type="range" id="bMax" min="0" max="100" value="95"><output id="bMaxOut">95%</output></div>
+    <div class="row"><label>Hue 低</label><input type="range" id="hMin" min="0" max="360" value="28"><output
+        id="hMinOut">28</output></div>
+    <div class="row"><label>Hue 高</label><input type="range" id="hMax" min="0" max="360" value="48"><output
+        id="hMaxOut">48</output></div>
+    <div class="row"><label>Sat 低</label><input type="range" id="sMin" min="0" max="100" value="45"><output
+        id="sMinOut">45%</output></div>
+    <div class="row"><label>Sat 高</label><input type="range" id="sMax" min="0" max="100" value="90"><output
+        id="sMaxOut">90%</output></div>
+    <div class="row"><label>Bri 低</label><input type="range" id="bMin" min="0" max="100" value="60"><output
+        id="bMinOut">60%</output></div>
+    <div class="row"><label>Bri 高</label><input type="range" id="bMax" min="0" max="100" value="95"><output
+        id="bMaxOut">95%</output></div>
 
     <div class="sep"></div>
     <div class="grid2">
@@ -67,17 +153,33 @@
 
     <div class="sep"></div>
     <div class="groupTitle">筆跡（風偏）參數</div>
-    <div class="row"><label>風力增益</label><input type="range" id="windGain" min="0" max="0.4" step="0.01" value="0.14"><output id="windGainOut">0.14</output></div>
-    <div class="row"><label>風阻尼</label><input type="range" id="windDrag" min="0.70" max="0.98" step="0.01" value="0.86"><output id="windDragOut">0.86</output></div>
-    <div class="row"><label>橫向弧度</label><input type="range" id="cross" min="0" max="0.6" step="0.01" value="0.28"><output id="crossOut">0.28</output></div>
-    <div class="row"><label>最大偏移(px)</label><input type="range" id="maxWind" min="0" max="120" step="1" value="60"><output id="maxWindOut">60</output></div>
-    <div class="row"><label>雜訊擺幅</label><input type="range" id="noiseAmp" min="0" max="1.2" step="0.05" value="0.60"><output id="noiseAmpOut">0.60</output></div>
+    <div class="row"><label>風力增益</label><input type="range" id="windGain" min="0" max="0.4" step="0.01"
+        value="0.14"><output id="windGainOut">0.14</output></div>
+    <div class="row"><label>風阻尼</label><input type="range" id="windDrag" min="0.70" max="0.98" step="0.01"
+        value="0.86"><output id="windDragOut">0.86</output></div>
+    <div class="row"><label>橫向弧度</label><input type="range" id="cross" min="0" max="0.6" step="0.01"
+        value="0.28"><output id="crossOut">0.28</output></div>
+    <div class="row"><label>最大偏移(px)</label><input type="range" id="maxWind" min="0" max="120" step="1"
+        value="60"><output id="maxWindOut">60</output></div>
+    <div class="row"><label>雜訊擺幅</label><input type="range" id="noiseAmp" min="0" max="1.2" step="0.05"
+        value="0.60"><output id="noiseAmpOut">0.60</output></div>
 
     <div class="sep"></div>
     <div class="groupTitle">筆跡產生</div>
-    <div class="row"><label>間距(px)</label><input type="range" id="spacing" min="8" max="60" step="1" value="24"><output id="spacingOut">24</output></div>
-    <div class="row"><label>頻率(s)</label><input type="range" id="interval" min="0.02" max="0.2" step="0.01" value="0.10"><output id="intervalOut">0.10</output></div>
-    <div class="row"><label>每次上限</label><input type="range" id="maxPerTick" min="1" max="12" step="1" value="7"><output id="maxPerTickOut">7</output></div>
+    <div class="row"><label>間距(px)</label><input type="range" id="spacing" min="8" max="60" step="1" value="24"><output
+        id="spacingOut">24</output></div>
+    <div class="row"><label>頻率(s)</label><input type="range" id="interval" min="0.02" max="0.2" step="0.01"
+        value="0.10"><output id="intervalOut">0.10</output></div>
+    <div class="row"><label>每次上限</label><input type="range" id="maxPerTick" min="1" max="12" step="1" value="7"><output
+        id="maxPerTickOut">7</output></div>
+
+    <div class="sep"></div>
+    <div class="groupTitle">消失 / 淡出</div>
+    <div class="row">
+      <label>壽命(秒)</label>
+      <input type="range" id="lifetime" min="1" max="120" step="1" value="30">
+      <output id="lifetimeOut">30s</output>
+    </div>
 
     <div class="sep"></div>
     <div class="subtle">
@@ -136,7 +238,6 @@
           return {
             blendMode: 'NORMAL',
             alpha: { start: 0.55, end: 0 },
-            // scale 會在 attachOrRefreshTrail 裡覆蓋
             speed: { min: 20, max: 70 },
             lifespan: { min: 420, max: 800 },
             gravityY: 280,
@@ -254,9 +355,12 @@
         this.balls = this.add.group();
         this._drawGridBG();
 
+        // ✅ 提前：壽命 / 淡出設定
+        this.fade = { lifetimeMs: 30000 };
+
         for (let i = 0; i < 110; i++) this.spawnBall();
 
-        // 🆕 筆跡狀態
+        // 筆跡狀態
         this.brush = {
           active: false,
           anchor: { x: 0, y: 0 },
@@ -272,7 +376,10 @@
           noiseAmp: 0.60
         };
 
-        // 指標採樣用（估算滑鼠速度）
+        // 🆕 壽命 / 淡出（新生球採用此設定）
+        // this.fade = { lifetimeMs: 30000 };
+
+        // 指標採樣
         this._ptr = { inited: false, x: 0, y: 0 };
 
         // 左鍵：點一下新增 + 開筆
@@ -303,7 +410,6 @@
         this.input.on('pointerup', p => {
           if (!p.rightButtonDown()) {
             this.brush.active = false;
-            // 收筆時把幾何錨點更新到當前位置，避免下一次一開始拉很長
             this.brush.anchor.x = p.worldX;
             this.brush.anchor.y = p.worldY;
           }
@@ -344,13 +450,19 @@
         this.physics.add.existing(spr);
         const body = spr.body;
 
-        // ✅ 碰撞半徑與可視一致
+        // 碰撞半徑與可視一致
         const rad = 32 * spr.scale;
         const off = 32 - rad;
         body.setCircle(rad, off, off).setCollideWorldBounds(true);
 
         // 材質 + 尾巴
         this.applyMaterial(spr, state.spawnMaterial, true);
+
+        // 🆕 記錄壽命 / 淡出
+        spr._born = this.time.now;
+        const lifeMs = (this.fade?.lifetimeMs ?? 30000);
+        spr._life = lifeMs;
+        spr._lastFadeFactor = 1;
 
         // 互相碰撞
         this.balls.add(spr);
@@ -393,17 +505,9 @@
       attachOrRefreshTrail(spr, mat) {
         if (spr._emit) { spr._emit.destroy(); spr._emit = null; }
         const cfg = Materials[mat].trailCfg(spr);
-
-        // ✅ 讓尾巴粒子大小 = 全域基準 * 球尺度
         const baseScale = state.baseScale * spr.scale;
         cfg.scale = { start: baseScale, end: baseScale * 0.5 };
-
-        const e = this.add.particles(0, 0, 'soft16', {
-          on: true,
-          follow: spr,
-          followOffset: { x: 0, y: 0 },
-          ...cfg
-        });
+        const e = this.add.particles(0, 0, 'soft16', { on: true, follow: spr, followOffset: { x: 0, y: 0 }, ...cfg });
         e.setDepth((spr.depth ?? 0) - 1);
         e.setScrollFactor(spr.scrollFactorX ?? 1, spr.scrollFactorY ?? 1);
         spr._emit = e;
@@ -425,13 +529,13 @@
           Materials[m].tick(this, b, dt);
         });
 
-        // === 先更新風偏 ===
+        // === 風偏（估算滑鼠速度） ===
         const p = this.input.activePointer;
         const dtSec = dt / 1000;
         let vx = 0, vy = 0;
         if (this._ptr.inited) {
-          vx = (p.worldX - this._ptr.x) / (dtSec || 1/60);
-          vy = (p.worldY - this._ptr.y) / (dtSec || 1/60);
+          vx = (p.worldX - this._ptr.x) / (dtSec || 1 / 60);
+          vy = (p.worldY - this._ptr.y) / (dtSec || 1 / 60);
         } else { this._ptr.inited = true; }
         this._ptr.x = p.worldX; this._ptr.y = p.worldY;
 
@@ -440,24 +544,22 @@
         const noiseX = Math.sin(tnow * 3.1) * br.noiseAmp;
         const noiseY = Math.cos(tnow * 2.7) * br.noiseAmp;
         const fx = vx * br.windGain + (-vy) * br.cross * br.windGain + noiseX;
-        const fy = vy * br.windGain + ( vx) * br.cross * br.windGain + noiseY;
+        const fy = vy * br.windGain + (vx) * br.cross * br.windGain + noiseY;
         br.wind.x = br.wind.x * br.windDrag + fx * dtSec;
         br.wind.y = br.wind.y * br.windDrag + fy * dtSec;
         const wmag = Math.hypot(br.wind.x, br.wind.y);
         if (wmag > br.maxWind) { const k = br.maxWind / (wmag || 1); br.wind.x *= k; br.wind.y *= k; }
 
-        // === 再依最新風偏做筆跡鋪球 ===
+        // === 筆跡鋪球 ===
         if (br.active) {
           br.acc += dt;
           if (br.acc >= br.interval) {
             br.acc -= br.interval;
-
             const px = p.worldX, py = p.worldY;
             let ax = br.anchor.x + br.wind.x;
             let ay = br.anchor.y + br.wind.y;
             const dx = px - ax, dy = py - ay;
             const dist = Math.hypot(dx, dy);
-
             if (dist >= br.spacing) {
               const dirx = dx / dist, diry = dy / dist;
               let placed = 0, traveled = 0;
@@ -475,6 +577,29 @@
             }
           }
         }
+
+        // === 🆕 壽命 / 淡出 ===
+        const now = this.time.now;
+        this.balls.children.iterate(s => {
+          if (!s || !s.active) return;
+          const born = s._born ?? now;
+          const life = s._life ?? this.fade.lifetimeMs;
+          const age = now - born;
+          let frac = age / life;
+          if (frac >= 1) {
+            if (s._emit) { s._emit.destroy(); s._emit = null; }
+            s.destroy();
+            return;
+          }
+          if (frac < 0) frac = 0;
+          const F = 1 - frac; // 1 → 0
+          // 把淡出視為疊加在「材質原始 alpha」上的因子，避免和材質動畫互相覆寫
+          const last = s._lastFadeFactor ?? 1;
+          const base = s.alpha / (last || 1);
+          s.setAlpha(base * F);
+          s._lastFadeFactor = F;
+          if (s._emit) s._emit.setAlpha(F);
+        });
       }
 
       _drawGridBG() {
@@ -534,6 +659,7 @@
       spacing: $('spacing'), spacingOut: $('spacingOut'),
       interval: $('interval'), intervalOut: $('intervalOut'),
       maxPerTick: $('maxPerTick'), maxPerTickOut: $('maxPerTickOut'),
+      lifetime: $('lifetime'), lifetimeOut: $('lifetimeOut'),
     };
 
     function clampPair(a, b, lo, hi) {
@@ -543,19 +669,19 @@
 
     function updateHSB() {
       clampPair(els.hMin, els.hMax, 0, 360); clampPair(els.sMin, els.sMax, 0, 100); clampPair(els.bMin, els.bMax, 0, 100);
-      state.hMin = +els.hMin.value; state.hMax = +els.hMax.value;
-      state.sMin = +els.sMin.value / 100; state.sMax = +els.sMax.value / 100;
-      state.bMin = +els.bMin.value / 100; state.bMax = +els.bMax.value / 100;
+      const stateObj = state;
+      stateObj.hMin = +els.hMin.value; stateObj.hMax = +els.hMax.value;
+      stateObj.sMin = +els.sMin.value / 100; stateObj.sMax = +els.sMax.value / 100;
+      stateObj.bMin = +els.bMin.value / 100; stateObj.bMax = +els.bMax.value / 100;
       els.hMinOut.textContent = els.hMin.value; els.hMaxOut.textContent = els.hMax.value;
       els.sMinOut.textContent = els.sMin.value + '%'; els.sMaxOut.textContent = els.sMax.value + '%';
       els.bMinOut.textContent = els.bMin.value + '%'; els.bMaxOut.textContent = els.bMax.value + '%';
-      const { r, g, b } = HSBtoRGB(ri(state.hMin, state.hMax), rf(state.sMin, state.sMax), rf(state.bMin, state.bMax));
+      const { r, g, b } = HSBtoRGB(ri(stateObj.hMin, stateObj.hMax), rf(stateObj.sMin, stateObj.sMax), rf(stateObj.bMin, stateObj.bMax));
       swatch.style.background = `rgb(${r},${g},${b})`;
     }
     [els.hMin, els.hMax, els.sMin, els.sMax, els.bMin, els.bMax].forEach(e => e.addEventListener('input', updateHSB));
     updateHSB();
 
-    // 風場滑桿
     function bindBrushSliders() {
       const s = game.scene.keys['FXScene']; if (!s) return;
       const br = s.brush;
@@ -570,12 +696,20 @@
       els.interval.addEventListener('input', e => { br.interval = Math.round(+e.target.value * 1000); els.intervalOut.textContent = (+e.target.value).toFixed(2); });
       els.maxPerTick.addEventListener('input', e => { br.maxPerTick = +e.target.value; els.maxPerTickOut.textContent = e.target.value; });
 
-      // 🆕 baseScale：全域尾巴尺寸
+      // 尾巴基準
       els.baseScale.addEventListener('input', e => {
         state.baseScale = +e.target.value;
         els.baseScaleOut.textContent = e.target.value;
-        refreshAllTrails(); // 立即更新所有既有尾巴
+        refreshAllTrails();
       });
+
+      // 🆕 壽命滑桿（只影響之後新生的球）
+      els.lifetime.addEventListener('input', e => {
+        const sfx = game.scene.keys['FXScene']; if (!sfx) return;
+        sfx.fade.lifetimeMs = Math.max(1, Math.round(+e.target.value)) * 1000;
+        els.lifetimeOut.textContent = `${e.target.value}s`;
+      });
+      els.lifetimeOut.textContent = `${els.lifetime.value}s`;
 
       // 初始化 output 顯示
       els.windGainOut.textContent = els.windGain.value;
@@ -609,4 +743,5 @@
     });
   </script>
 </body>
+
 </html>
