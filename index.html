@@ -1,336 +1,506 @@
 <!doctype html>
 <html lang="zh-Hant">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Phaser 單球材質：砂礫 / 水流 / 煙霧（逐球切換 + 清空修正 + Shift右鍵改色 + 滾輪調尺寸）</title>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-<style>
-  html,body{margin:0;height:100%;background:#0b1020;color:#ecf0ff;font-family:Inter, Noto Sans TC, system-ui;}
-  #game{position:fixed;inset:0}
-  .panel{position:fixed; right:12px; top:12px; width:340px; max-height:calc(100vh - 24px);
-    background:rgba(16,22,53,.75); backdrop-filter:blur(10px);
-    border:1px solid rgba(34,211,238,.45); border-radius:16px; padding:14px; overflow:auto;
-    box-shadow:0 10px 30px rgba(0,0,0,.35)}
-  h2{margin:0 0 10px;font-size:16px}
-  .row{display:grid;grid-template-columns:90px 1fr 52px;gap:8px;align-items:center;margin:6px 0}
-  .mode-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}
-  .btn{cursor:pointer;background:#1e2a5a;border:1px solid #33457a;color:#ecf0ff;padding:6px 10px;border-radius:10px}
-  .btn:hover{background:#26316b}
-  .swatch{width:24px;height:24px;border-radius:8px;border:1px solid rgba(255,255,255,.35)}
-  .sep{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);margin:10px 0}
-  .subtle{color:#a5b4fc;font-size:12px}
-  input[type="range"]{width:100%}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phaser 3.90｜煙 / 水 / 沙（逐球）＋ 粒子尾巴（新 API）</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  <style>
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #0b1020;
+      color: #ecf0ff;
+      font-family: Inter, Noto Sans TC, system-ui;
+    }
+
+    #game {
+      position: fixed;
+      inset: 0
+    }
+
+    .panel {
+      position: fixed;
+      right: 12px;
+      top: 12px;
+      width: 340px;
+      max-height: calc(100vh - 24px);
+      background: rgba(16, 22, 53, .75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(34, 211, 238, .45);
+      border-radius: 16px;
+      padding: 14px;
+      overflow: auto;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .35)
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 16px
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 90px 1fr 52px;
+      gap: 8px;
+      align-items: center;
+      margin: 6px 0
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 6px 0 10px
+    }
+
+    .btn {
+      cursor: pointer;
+      background: #1e2a5a;
+      border: 1px solid #33457a;
+      color: #ecf0ff;
+      padding: 6px 10px;
+      border-radius: 10px
+    }
+
+    .btn:hover {
+      background: #26316b
+    }
+
+    .swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, .35)
+    }
+
+    .sep {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .25), transparent);
+      margin: 10px 0
+    }
+
+    .subtle {
+      color: #a5b4fc;
+      font-size: 12px
+    }
+
+    input[type="range"] {
+      width: 100%
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px
+    }
+  </style>
 </head>
+
 <body>
-<div id="game"></div>
+  <div id="game"></div>
 
-<div class="panel">
-  <h2>生成材質（逐球）</h2>
-  <div class="mode-row">
-    <label><input type="radio" name="matSpawn" value="sand" checked> 砂礫</label>
-    <label><input type="radio" name="matSpawn" value="water"> 水流</label>
-    <label><input type="radio" name="matSpawn" value="smoke"> 煙霧</label>
+  <div class="panel">
+    <h2>生成材質（逐球）</h2>
+    <div class="mode-row">
+      <label><input type="radio" name="matSpawn" value="sand" checked> 流沙</label>
+      <label><input type="radio" name="matSpawn" value="water"> 水流</label>
+      <label><input type="radio" name="matSpawn" value="smoke"> 煙霧</label>
+    </div>
+
+    <div class="sep"></div>
+    <div class="subtle">顏色（HSB 範圍，影響新球）</div>
+    <div class="row"><label>Hue 低</label><input type="range" id="hMin" min="0" max="360" value="28"><output
+        id="hMinOut">28</output></div>
+    <div class="row"><label>Hue 高</label><input type="range" id="hMax" min="0" max="360" value="48"><output
+        id="hMaxOut">48</output></div>
+    <div class="row"><label>Sat 低</label><input type="range" id="sMin" min="0" max="100" value="45"><output
+        id="sMinOut">45%</output></div>
+    <div class="row"><label>Sat 高</label><input type="range" id="sMax" min="0" max="100" value="90"><output
+        id="sMaxOut">90%</output></div>
+    <div class="row"><label>Bri 低</label><input type="range" id="bMin" min="0" max="100" value="60"><output
+        id="bMinOut">60%</output></div>
+    <div class="row"><label>Bri 高</label><input type="range" id="bMax" min="0" max="100" value="95"><output
+        id="bMaxOut">95%</output></div>
+
+    <div class="sep"></div>
+    <div class="grid2">
+      <button class="btn" id="spawn10">新增 20 顆</button>
+      <button class="btn" id="clear">清空</button>
+    </div>
+    <div class="mode-row" style="margin-top:8px">
+      <span class="subtle">示意色：</span>
+      <div class="swatch" id="swatch"></div>
+    </div>
+
+    <div class="sep"></div>
+    <div class="subtle">
+      左鍵新增球（用目前材質）；<br />
+      右鍵點球＝切材質；<br />
+      <b>Shift+右鍵</b>點球＝改該顆顏色；<br />
+      <b>滑鼠滾輪</b>指著球＝改該顆尺寸；P 暫停。
+    </div>
   </div>
 
-  <div class="sep"></div>
-  <div class="subtle">顏色（HSB 範圍，影響「新生成球」）</div>
-  <div class="row"><label>Hue 低</label><input type="range" id="hMin" min="0" max="360" value="28"><output id="hMinOut">28</output></div>
-  <div class="row"><label>Hue 高</label><input type="range" id="hMax" min="0" max="360" value="48"><output id="hMaxOut">48</output></div>
-  <div class="row"><label>Sat 低</label><input type="range" id="sMin" min="0" max="100" value="45"><output id="sMinOut">45%</output></div>
-  <div class="row"><label>Sat 高</label><input type="range" id="sMax" min="0" max="100" value="90"><output id="sMaxOut">90%</output></div>
-  <div class="row"><label>Bri 低</label><input type="range" id="bMin" min="0" max="100" value="60"><output id="bMinOut">60%</output></div>
-  <div class="row"><label>Bri 高</label><input type="range" id="bMax" min="0" max="100" value="95"><output id="bMaxOut">95%</output></div>
-
-  <div class="sep"></div>
-  <div class="grid2">
-    <button class="btn" id="spawn10">新增 10 顆</button>
-    <button class="btn" id="clear">清空</button>
-  </div>
-  <div class="mode-row" style="margin-top:8px">
-    <span class="subtle">示意色：</span><div class="swatch" id="swatch"></div>
-  </div>
-
-  <div class="sep"></div>
-  <div class="subtle">
-    提示：左鍵新增球（用目前所選材質）；<br/>
-    右鍵點球＝切換材質；<br/>
-    <b>Shift+右鍵</b>點球＝改該顆顏色；<br/>
-    <b>滾輪</b>指著球＝改該顆尺寸；P 暫停。
-  </div>
-</div>
-
-<script>
-/* ===== 工具：顏色 & 隨機 ===== */
-function HSBtoRGB(h, s, v){
-  const c=v*s, x=c*(1-Math.abs(((h/60)%2)-1)), m=v-c;
-  let r=0,g=0,b=0;
-  if(h<60){r=c;g=x;b=0}else if(h<120){r=x;g=c;b=0}
-  else if(h<180){r=0;g=c;b=x}else if(h<240){r=0;g=x;b=c}
-  else if(h<300){r=x;g=0;b=c}else{r=c;g=0;b=x}
-  return {r:Math.round((r+m)*255),g:Math.round((g+m)*255),b:Math.round((b+m)*255)};
-}
-const RGBhex=(r,g,b)=>(r<<16)+(g<<8)+b;
-const ri=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
-const rf=(a,b)=>a+Math.random()*(b-a);
-
-/* ===== 狀態：生成材質＋HSB 範圍 ===== */
-const state = {
-  spawnMaterial: 'sand',
-  hMin:28,hMax:48,sMin:.45,sMax:.90,bMin:.60,bMax:.95,
-};
-
-/* ===== 材質行為（逐球） ===== */
-const Materials = {
-  sand: {
-    label:'砂礫', texture:'dot64',
-    applyPreset(body, sprite){
-      sprite.setAlpha(1).setBlendMode(Phaser.BlendModes.NORMAL);
-      body.setBounce(0.2);
-      body.setDrag(160,160);
-      body.setVelocity(ri(-30,30), ri(-10,40));
-      body.setMass(1.4);
-      body._mat='sand';
-    },
-    tick(scene, body, dt){
-      const jitter=8;
-      body.velocity.x+=Phaser.Math.FloatBetween(-jitter,jitter)*(dt/16.7);
-      const max=220;
-      if(body.velocity.length()>max) body.velocity.scale(max/body.velocity.length());
+  <script>
+    /* ===== 小工具 ===== */
+    function HSBtoRGB(h, s, v) {
+      const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+      let r = 0, g = 0, b = 0;
+      if (h < 60) { r = c; g = x; b = 0 } else if (h < 120) { r = x; g = c; b = 0 }
+      else if (h < 180) { r = 0; g = c; b = x } else if (h < 240) { r = 0; g = x; b = c }
+      else if (h < 300) { r = x; g = 0; b = c } else { r = c; g = 0; b = x }
+      return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
     }
-  },
-  water: {
-    label:'水流', texture:'soft64',
-    applyPreset(body, sprite){
-      sprite.setAlpha(0.75).setBlendMode(Phaser.BlendModes.ADD);
-      body.setBounce(1);
-      body.setDrag(18,18);
-      body.setVelocity(ri(-80,80), ri(-80,80));
-      body.setMass(1.0);
-      body._ox=Math.random()*1000; body._oy=Math.random()*1000;
-      body._mat='water';
-    },
-    tick(scene, body, dt){
-      const t=scene.time.now*0.00045;
-      const nx=Math.sin(t+(body._ox||0));
-      const ny=Math.cos(t*0.9+(body._oy||0));
-      const speed=110;
-      const tx=nx*speed, ty=ny*speed;
-      body.velocity.x += (tx - body.velocity.x) * 0.12;
-      body.velocity.y += (ty - body.velocity.y) * 0.12;
-      const jitter=6;
-      body.velocity.x+=Phaser.Math.FloatBetween(-jitter,jitter)*(dt/16.7);
-      body.velocity.y+=Phaser.Math.FloatBetween(-jitter,jitter)*(dt/16.7);
-      const max=140;
-      if(body.velocity.length()>max) body.velocity.scale(max/body.velocity.length());
-    }
-  },
-  smoke: {
-    label:'煙霧', texture:'soft64',
-    applyPreset(body, sprite){
-      sprite.setAlpha(0.55).setBlendMode(Phaser.BlendModes.SCREEN);
-      body.setBounce(0);
-      body.setDrag(80,120);
-      body.setVelocity(ri(-20,20), ri(-10,10));
-      body.setMass(0.8);
-      body._spin=(Math.random()*0.6+0.2)*(Math.random()<.5?-1:1);
-      body._mat='smoke';
-    },
-    tick(scene, body, dt){
-      const jitter=5;
-      body.velocity.x+=Phaser.Math.FloatBetween(-jitter,jitter)*(dt/16.7);
-      body.velocity.y+=Phaser.Math.FloatBetween(-jitter,jitter)*(dt/16.7);
-      const k = 1 + 0.08*(dt/16.7);
-      body.velocity.x*=k; body.velocity.y*=k;
-      const max=120;
-      if(body.velocity.length()>max) body.velocity.scale(max/body.velocity.length());
-      if(body.gameObject) body.gameObject.rotation += (body._spin||0)*(dt/1000);
-    }
-  }
-};
+    const RGBhex = (r, g, b) => (r << 16) + (g << 8) + b;
+    const ri = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
+    const rf = (a, b) => a + Math.random() * (b - a);
 
-/* ===== 場景 ===== */
-class FXScene extends Phaser.Scene{
-  constructor(){ super('FXScene'); }
-  preload(){
-    const g=this.make.graphics({x:0,y:0,add:false});
-    g.clear(); g.fillStyle(0xffffff,1); g.fillCircle(32,32,32); g.generateTexture('dot64',64,64);
-    g.clear();
-    for(let r=30;r>=0;r--){ g.fillStyle(0xffffff,(1-r/30)*0.08+0.05); g.fillCircle(32,32,r); }
-    g.generateTexture('soft64',64,64);
-    g.destroy();
-  }
-  create(){
-    const W=this.scale.width,H=this.scale.height;
-    this.physics.world.setBounds(0,0,W,H,true,true,true,true);
-    this.physics.world.gravity.y = 0; // 世界中性
+    /* ===== 狀態 ===== */
+    const state = {
+      spawnMaterial: 'sand',
+      hMin: 28, hMax: 48, sMin: .45, sMax: .90, bMin: .60, bMax: .95,
+    };
 
-    this.balls=this.add.group();
-    this._drawGridBG();
-
-    for(let i=0;i<90;i++) this.spawnBall();
-
-    // 左鍵新增
-    this.input.on('pointerdown', p=>{
-      if (p.rightButtonDown()) return;
-      for(let i=0;i<4;i++) this.spawnBall(p.worldX,p.worldY);
-    });
-
-    // 右鍵：切材質或改色（Shift）
-    this.input.mouse.disableContextMenu();
-    this.input.on('pointerdown', p=>{
-      if(!p.rightButtonDown()) return;
-      const s = this.physics.closest(p, this.balls.getChildren());
-      if (!s) return;
-      if (p.event.shiftKey){
-        // Shift+右鍵：改那顆顏色
-        this.recolorBall(s);
-      }else{
-        // 右鍵：切換材質
-        const body = s.body;
-        const next = body._mat==='sand' ? 'water' : body._mat==='water' ? 'smoke' : 'sand';
-        this.applyMaterial(s, next);
+    /* ===== 三種材質（逐球邏輯 + 尾巴設定） ===== */
+    const Materials = {
+      sand: {
+        label: '流沙', texture: 'dot64',
+        applyPreset(body, sprite) {
+          sprite.setAlpha(1).setBlendMode(Phaser.BlendModes.NORMAL);
+          body.setBounce(0.15);
+          body.setDrag(160, 180);
+          body.setVelocity(ri(-20, 20), ri(20, 60));
+          body.setMass(1.3);
+          body._mat = 'sand';
+        },
+        tick(scene, body, dt) {
+          const jitter = 6;
+          body.velocity.x += Phaser.Math.FloatBetween(-jitter, jitter) * (dt / 16.7);
+          if (body.velocity.length() < 20) body.velocity.y += 12 * (dt / 16.7);
+          const max = 220;
+          if (body.velocity.length() > max) body.velocity.scale(max / body.velocity.length());
+        },
+        trailCfg(sprite) {
+          return {
+            blendMode: 'NORMAL',
+            alpha: { start: 0.55, end: 0 },
+            scale: { start: 0.6, end: 0.2 },
+            speed: { min: 20, max: 70 },
+            lifespan: { min: 420, max: 800 },
+            gravityY: 280,
+            frequency: 40,
+            quantity: 1,
+            tint: sprite.tintTopLeft
+          };
+        }
+      },
+      water: {
+        label: '水流', texture: 'soft64',
+        applyPreset(body, sprite) {
+          sprite.setAlpha(0.8).setBlendMode(Phaser.BlendModes.ADD);
+          body.setBounce(1);
+          body.setDrag(18, 18);
+          body.setVelocity(ri(-90, 90), ri(-90, 90));
+          body.setMass(1.0);
+          body._ox = Math.random() * 1000; body._oy = Math.random() * 1000;
+          body._mat = 'water';
+        },
+        tick(scene, body, dt) {
+          const t = scene.time.now * 0.0005;
+          const nx = Math.sin(t + (body._ox || 0));
+          const ny = Math.cos(t * 0.9 + (body._oy || 0));
+          const speed = 120;
+          const tx = nx * speed, ty = ny * speed;
+          body.velocity.x += (tx - body.velocity.x) * 0.12;
+          body.velocity.y += (ty - body.velocity.y) * 0.12;
+          const jitter = 6;
+          body.velocity.x += Phaser.Math.FloatBetween(-jitter, jitter) * (dt / 16.7);
+          body.velocity.y += Phaser.Math.FloatBetween(-jitter, jitter) * (dt / 16.7);
+          const max = 150;
+          if (body.velocity.length() > max) body.velocity.scale(max / body.velocity.length());
+        },
+        trailCfg(sprite) {
+          return {
+            blendMode: 'ADD',
+            alpha: { start: 0.6, end: 0 },
+            scale: { start: 0.7, end: 0.0 },
+            speed: { min: 40, max: 100 },
+            lifespan: { min: 360, max: 720 },
+            gravityY: 0,
+            frequency: 35,
+            quantity: 1,
+            tint: sprite.tintTopLeft
+          };
+        }
+      },
+      smoke: {
+        label: '煙霧', texture: 'soft64',
+        applyPreset(body, sprite) {
+          sprite.setAlpha(0.55).setBlendMode(Phaser.BlendModes.SCREEN);
+          body.setBounce(0);
+          body.setDrag(90, 130);
+          body.setVelocity(ri(-25, 25), ri(-10, 15));
+          body.setMass(0.85);
+          body._spin = (Math.random() * 0.6 + 0.2) * (Math.random() < .5 ? -1 : 1);
+          body._mat = 'smoke';
+          sprite._targetScale = sprite.scale * (1.1 + Math.random() * 0.25);
+        },
+        tick(scene, body, dt) {
+          body.velocity.y -= 10 * (dt / 16.7);
+          const jitter = 4;
+          body.velocity.x += Phaser.Math.FloatBetween(-jitter, jitter) * (dt / 16.7);
+          body.velocity.y += Phaser.Math.FloatBetween(-jitter, jitter) * (dt / 16.7);
+          const max = 120;
+          if (body.velocity.length() > max) body.velocity.scale(max / body.velocity.length());
+          const s = body.gameObject;
+          if (s) {
+            const k = 1 + 0.04 * (dt / 1000);
+            s.setScale(Math.min(s._targetScale || s.scale, s.scale * k));
+            s.rotation += (body._spin || 0) * (dt / 1000);
+            const base = 0.475, amp = 0.125;
+            const tt = scene.time.now * 0.001 + (body._ox || 0);
+            s.setAlpha(Phaser.Math.Clamp(base + Math.sin(tt) * amp, 0.2, 0.7));
+          }
+        },
+        trailCfg(sprite) {
+          return {
+            blendMode: 'SCREEN',
+            alpha: { start: 0.35, end: 0 },
+            scale: { start: 0.55, end: 1.05 },
+            speed: { min: 10, max: 28 },
+            lifespan: { min: 900, max: 1500 },
+            gravityY: -12,
+            frequency: 55,
+            quantity: 1,
+            tint: sprite.tintTopLeft,
+            rotate: { min: -10, max: 10 }
+          };
+        }
       }
+    };
+
+    /* ===== 場景 ===== */
+    class FXScene extends Phaser.Scene {
+      constructor() { super('FXScene'); }
+      preload() {
+        // 主球貼圖：實心與羽化
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+        g.clear(); g.fillStyle(0xffffff, 1); g.fillCircle(32, 32, 32); g.generateTexture('dot64', 64, 64);
+        g.clear();
+        for (let r = 30; r >= 0; r--) { g.fillStyle(0xffffff, (1 - r / 30) * 0.08 + 0.05); g.fillCircle(32, 32, r); }
+        g.generateTexture('soft64', 64, 64);
+        // 粒子貼圖（更小，省繪製）
+        g.clear();
+        for (let r = 7; r >= 0; r--) { g.fillStyle(0xffffff, (1 - r / 7) * 0.12 + 0.08); g.fillCircle(8, 8, r); }
+        g.generateTexture('soft16', 16, 16);
+        g.destroy();
+      }
+      create() {
+        const W = this.scale.width, H = this.scale.height;
+        this.physics.world.setBounds(0, 0, W, H, true, true, true, true);
+        this.physics.world.gravity.y = 0; // 中性，行為交給材質
+
+        this.balls = this.add.group();
+        this._drawGridBG();
+
+        for (let i = 0; i < 110; i++) this.spawnBall();
+
+        // 左鍵新增
+        this.input.on('pointerdown', p => {
+          if (p.rightButtonDown()) return;
+          for (let i = 0; i < 5; i++) this.spawnBall(p.worldX, p.worldY);
+        });
+
+        // 右鍵切材質；Shift+右鍵改色（含尾巴顏色同步）
+        this.input.mouse.disableContextMenu();
+        this.input.on('pointerdown', p => {
+          if (!p.rightButtonDown()) return;
+          const s = this.physics.closest(p, this.balls.getChildren());
+          if (!s) return;
+          if (p.event.shiftKey) {
+            this.recolorBall(s);
+            this.updateTrailTint(s);
+          } else {
+            const body = s.body;
+            const next = body._mat === 'sand' ? 'water' : body._mat === 'water' ? 'smoke' : 'sand';
+            this.applyMaterial(s, next, /*refreshTrail*/true);
+          }
+        });
+
+        // 滾輪尺寸
+        this.input.on('wheel', (pointer, over, dx, dy, dz, event) => {
+          const s = this.physics.closest(pointer, this.balls.getChildren());
+          if (!s) return;
+          const delta = -Math.sign(dy) * 0.08;
+          this.resizeBall(s, Phaser.Math.Clamp(s.scale + delta, 0.25, 1.35));
+          event.preventDefault();
+        });
+
+        // Info
+        this.info = this.add.text(12, 12, '', { fontFamily: 'Inter, Noto Sans TC, system-ui', fontSize: '14px', color: '#ecf0ff' }).setDepth(1000);
+        this.input.keyboard.on('keydown-P', () => { this.physics.world.isPaused ? this.physics.world.resume() : this.physics.world.pause(); });
+        this.scale.on('resize', ({ width, height }) => {
+          this.cameras.main.setSize(width, height);
+          this.physics.world.setBounds(0, 0, width, height, true, true, true, true);
+        });
+      }
+
+      spawnBall(x, y) {
+        const W = this.scale.width, H = this.scale.height;
+        const radius = ri(7, 16);
+        const h = ri(state.hMin, state.hMax), s = rf(state.sMin, state.sMax), v = rf(state.bMin, state.bMax);
+        const { r, g, b } = HSBtoRGB(h, s, v); const tint = RGBhex(r, g, b);
+        const key = Materials[state.spawnMaterial].texture;
+        const spr = this.add.image(x ?? ri(radius, W - radius), y ?? ri(radius, H - radius), key)
+          .setTint(tint).setScale(radius / 32);
+        this.physics.add.existing(spr);
+        const body = spr.body; body.setCircle(32, 0, 0).setCollideWorldBounds(true);
+
+        // 材質 + 尾巴
+        this.applyMaterial(spr, state.spawnMaterial, /*refreshTrail*/true);
+
+        // 互相碰撞
+        this.balls.add(spr);
+        this.balls.children.iterate(o => { if (o && o !== spr) this.physics.add.collider(spr, o); });
+
+        // 銷毀保險
+        spr.on('destroy', () => { if (spr._emit) { spr._emit.destroy(); spr._emit = null; } });
+      }
+
+      applyMaterial(spr, mat, refreshTrail = false) {
+        const body = spr.body;
+        spr.setTexture(Materials[mat].texture);
+        spr.setAlpha(1).setBlendMode(Phaser.BlendModes.NORMAL);
+        body.setBounce(0).setDrag(0, 0);
+        delete body._ox; delete body._oy; delete body._spin;
+        Materials[mat].applyPreset(body, spr);
+
+        if (refreshTrail) this.attachOrRefreshTrail(spr, mat);
+      }
+
+      recolorBall(spr) {
+        const h = ri(state.hMin, state.hMax), s = rf(state.sMin, state.sMax), v = rf(state.bMin, state.bMax);
+        const { r, g, b } = HSBtoRGB(h, s, v);
+        spr.setTint(RGBhex(r, g, b));
+      }
+
+      updateTrailTint(spr) {
+        if (spr._emit) { spr._emit.setTint(spr.tintTopLeft); }
+      }
+
+      resizeBall(spr, newScale) {
+        spr.setScale(newScale);
+        const radius = 32 * newScale;
+        const offset = 32 - radius;
+        spr.body.setCircle(radius, offset, offset);
+      }
+      
+      attachOrRefreshTrail(spr, mat) {
+        if (spr._emit) { spr._emit.destroy(); spr._emit = null; }
+
+        const cfg = Materials[mat].trailCfg(spr);
+
+        // 🟢 讓尾巴粒子大小 = 球的大小
+        const baseScale = spr.scale * 20;  // 球的縮放（球半徑/32）
+        cfg.scale = { start: baseScale, end: baseScale * 0.5 }; // 尾巴稍微縮小到一半
+
+        const e = this.add.particles(0, 0, 'soft16', {
+          on: true,
+          follow: spr,
+          followOffset: { x: 0, y: 0 },
+          ...cfg
+        });
+
+        e.setDepth((spr.depth ?? 0) - 1);
+        e.setScrollFactor(spr.scrollFactorX ?? 1, spr.scrollFactorY ?? 1);
+
+        spr._emit = e;
+      }
+
+      clearBalls() {
+        // 先把每顆球的尾巴銷毀
+        this.balls.children.iterate(s => {
+          if (s && s._emit) { s._emit.destroy(); s._emit = null; }
+        });
+        // 清碰撞器與球
+        this.physics.world.colliders.destroy();
+        this.balls.clear(true, true);
+      }
+
+      update(t, dt) {
+        const fps = (1000 / dt) | 0;
+        this.info.setText([`Balls: ${this.balls.getLength()}`, `FPS: ${fps}`]);
+        this.balls.children.iterate(s => {
+          const b = s.body; const m = b._mat || 'sand';
+          Materials[m].tick(this, b, dt);
+        });
+      }
+
+      _drawGridBG() {
+        const W = this.scale.width, H = this.scale.height;
+        const g = this.add.graphics().setDepth(-1); g.fillStyle(0x0b1020, 1); g.fillRect(0, 0, W, H);
+        g.lineStyle(1, 0x1a2244, 0.5);
+        for (let x = 0; x <= W; x += 32) g.lineBetween(x, 0, x, H);
+        for (let y = 0; y <= H; y += 32) g.lineBetween(0, y, W, y);
+        const border = this.add.graphics().setDepth(999);
+        border.lineStyle(2, 0x22d3ee, 0.85); border.strokeRect(1, 1, W - 2, H - 2);
+        this.scale.on('resize', ({ width, height }) => {
+          g.clear(); g.fillStyle(0x0b1020, 1); g.fillRect(0, 0, width, height);
+          g.lineStyle(1, 0x1a2244, 0.5);
+          for (let x = 0; x <= width; x += 32) g.lineBetween(x, 0, x, height);
+          for (let y = 0; y <= height; y += 32) g.lineBetween(0, y, width, y);
+          border.clear(); border.lineStyle(2, 0x22d3ee, 0.85); border.strokeRect(1, 1, width - 2, height - 2);
+        });
+      }
+    }
+
+    /* 啟動 */
+    const game = new Phaser.Game({
+      type: Phaser.AUTO,
+      parent: 'game',
+      backgroundColor: '#0b1020',
+      scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+      physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+      scene: [FXScene]
     });
 
-    // 滾輪：調整指到那顆的尺寸
-    this.input.on('wheel', (pointer, over, dx, dy, dz, event)=>{
-      // 找最近的球（可自行改成只找指針下的）
-      const s = this.physics.closest(pointer, this.balls.getChildren());
-      if (!s) return;
-      const delta = -Math.sign(dy) * 0.08; // 往上放大、往下縮小
-      this.resizeBall(s, Phaser.Math.Clamp(s.scale + delta, 0.25, 1.35));
-      event.preventDefault();
+    /* ===== UI 綁定 ===== */
+    const $ = id => document.getElementById(id);
+    const swatch = $('swatch');
+    const els = {
+      hMin: $('hMin'), hMax: $('hMax'), sMin: $('sMin'), sMax: $('sMax'), bMin: $('bMin'), bMax: $('bMax'),
+      hMinOut: $('hMinOut'), hMaxOut: $('hMaxOut'), sMinOut: $('sMinOut'), sMaxOut: $('sMaxOut'), bMinOut: $('bMinOut'), bMaxOut: $('bMaxOut')
+    };
+    function clampPair(a, b, lo, hi) { if (+a.value > +b.value) { const t = a.value; a.value = b.value; b.value = t; } a.value = Math.max(lo, Math.min(+a.value, hi)); b.value = Math.max(lo, Math.min(+b.value, hi)); }
+    function updateHSB() {
+      clampPair(els.hMin, els.hMax, 0, 360); clampPair(els.sMin, els.sMax, 0, 100); clampPair(els.bMin, els.bMax, 0, 100);
+      state.hMin = +els.hMin.value; state.hMax = +els.hMax.value;
+      state.sMin = +els.sMin.value / 100; state.sMax = +els.sMax.value / 100;
+      state.bMin = +els.bMin.value / 100; state.bMax = +els.bMax.value / 100;
+      els.hMinOut.textContent = els.hMin.value; els.hMaxOut.textContent = els.hMax.value;
+      els.sMinOut.textContent = els.sMin.value + '%'; els.sMaxOut.textContent = els.sMax.value + '%';
+      els.bMinOut.textContent = els.bMin.value + '%'; els.bMaxOut.textContent = els.bMax.value + '%';
+      const { r, g, b } = HSBtoRGB(ri(state.hMin, state.hMax), rf(state.sMin, state.sMax), rf(state.bMin, state.bMax));
+      swatch.style.background = `rgb(${r},${g},${b})`;
+    }
+    [els.hMin, els.hMax, els.sMin, els.sMax, els.bMin, els.bMax].forEach(e => e.addEventListener('input', updateHSB));
+    updateHSB();
+
+    document.querySelectorAll('input[name="matSpawn"]').forEach(r => {
+      r.addEventListener('change', e => { state.spawnMaterial = e.target.value; });
     });
 
-    this.info = this.add.text(12,12,'',{
-      fontFamily:'Inter, Noto Sans TC, system-ui',fontSize:'14px',color:'#ecf0ff'
-    }).setDepth(1000);
-    this.input.keyboard.on('keydown-P',()=>{ this.physics.world.isPaused ? this.physics.world.resume() : this.physics.world.pause(); });
-    this.scale.on('resize',({width,height})=>{
-      this.cameras.main.setSize(width,height);
-      this.physics.world.setBounds(0,0,width,height,true,true,true,true);
+    $('spawn10').addEventListener('click', () => {
+      const s = game.scene.keys['FXScene']; for (let i = 0; i < 20; i++) s.spawnBall();
     });
-  }
-
-  spawnBall(x,y){
-    const W=this.scale.width,H=this.scale.height;
-    const radius=ri(7,16);
-    const h=ri(state.hMin,state.hMax), s=rf(state.sMin,state.sMax), v=rf(state.bMin,state.bMax);
-    const {r,g,b}=HSBtoRGB(h,s,v); const tint=RGBhex(r,g,b);
-
-    const key = Materials[state.spawnMaterial].texture;
-    const spr=this.add.image(x??ri(radius,W-radius),y??ri(radius,H-radius),key)
-      .setTint(tint).setScale(radius/32);
-    this.physics.add.existing(spr);
-    const body=spr.body; body.setCircle(32,0,0).setCollideWorldBounds(true);
-
-    this.applyMaterial(spr, state.spawnMaterial);
-
-    this.balls.add(spr);
-    this.balls.children.iterate(o=>{ if(o&&o!==spr) this.physics.add.collider(spr,o); });
-  }
-
-  applyMaterial(spr, mat){
-    const body = spr.body;
-    spr.setTexture(Materials[mat].texture);
-    spr.setAlpha(1).setBlendMode(Phaser.BlendModes.NORMAL);
-    body.setBounce(0).setDrag(0,0).setVelocity(body.velocity.x, body.velocity.y);
-    delete body._ox; delete body._oy; delete body._spin;
-    Materials[mat].applyPreset(body, spr);
-  }
-
-  recolorBall(spr){
-    const h=ri(state.hMin,state.hMax), s=rf(state.sMin,state.sMax), v=rf(state.bMin,state.bMax);
-    const {r,g,b}=HSBtoRGB(h,s,v);
-    spr.setTint(RGBhex(r,g,b));
-  }
-
-  resizeBall(spr, newScale){
-    spr.setScale(newScale);
-    // 讓碰撞圓跟著縮放：半徑 = 32 * scale，偏移 = 32 - 半徑
-    const radius = 32 * newScale;
-    const offset = 32 - radius;
-    spr.body.setCircle(radius, offset, offset);
-  }
-
-  clearBalls(){
-    // 1) 先把所有碰撞器清掉，避免殘留引用
-    this.physics.world.colliders.destroy();
-    // 2) 銷毀所有球並清空群組
-    this.balls.clear(true, true);
-  }
-
-  update(t,dt){
-    const fps=(1000/dt)|0;
-    this.info.setText([`Balls: ${this.balls.getLength()}`, `FPS: ${fps}`]);
-
-    this.balls.children.iterate(s=>{
-      const b=s.body; const m=b._mat||'sand';
-      Materials[m].tick(this,b,dt);
+    $('clear').addEventListener('click', () => {
+      const s = game.scene.keys['FXScene']; s.clearBalls();
     });
-  }
-
-  _drawGridBG(){
-    const W=this.scale.width,H=this.scale.height;
-    const g=this.add.graphics().setDepth(-1); g.fillStyle(0x0b1020,1); g.fillRect(0,0,W,H);
-    g.lineStyle(1,0x1a2244,0.5);
-    for(let x=0;x<=W;x+=32) g.lineBetween(x,0,x,H);
-    for(let y=0;y<=H;y+=32) g.lineBetween(0,y,W,y);
-    const border=this.add.graphics().setDepth(999);
-    border.lineStyle(2,0x22d3ee,0.85); border.strokeRect(1,1,W-2,H-2);
-    this.scale.on('resize',({width,height})=>{
-      g.clear(); g.fillStyle(0x0b1020,1); g.fillRect(0,0,width,height);
-      g.lineStyle(1,0x1a2244,0.5);
-      for(let x=0;x<=width;x+=32) g.lineBetween(x,0,x,height);
-      for(let y=0;y<=height;y+=32) g.lineBetween(0,y,width,y);
-      border.clear(); border.lineStyle(2,0x22d3ee,0.85); border.strokeRect(1,1,width-2,height-2);
-    });
-  }
-}
-
-/* 啟動 */
-const game = new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: 'game',
-  backgroundColor: '#0b1020',
-  scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
-  physics: { default:'arcade', arcade:{ gravity:{ y: 0 }, debug:false } },
-  scene: [FXScene]
-});
-
-/* ===== UI 綁定 ===== */
-const $=id=>document.getElementById(id);
-const swatch=$('swatch');
-const els={hMin:$('hMin'),hMax:$('hMax'),sMin:$('sMin'),sMax:$('sMax'),bMin:$('bMin'),bMax:$('bMax'),
-  hMinOut:$('hMinOut'),hMaxOut:$('hMaxOut'),sMinOut:$('sMinOut'),sMaxOut:$('sMaxOut'),bMinOut:$('bMinOut'),bMaxOut:$('bMaxOut')};
-function clampPair(a,b,lo,hi){ if(+a.value>+b.value){const t=a.value;a.value=b.value;b.value=t;} a.value=Math.max(lo,Math.min(+a.value,hi)); b.value=Math.max(lo,Math.min(+b.value,hi)); }
-function updateHSB(){
-  clampPair(els.hMin,els.hMax,0,360); clampPair(els.sMin,els.sMax,0,100); clampPair(els.bMin,els.bMax,0,100);
-  state.hMin=+els.hMin.value; state.hMax=+els.hMax.value;
-  state.sMin=+els.sMin.value/100; state.sMax=+els.sMax.value/100;
-  state.bMin=+els.bMin.value/100; state.bMax=+els.bMax.value/100;
-  els.hMinOut.textContent=els.hMin.value; els.hMaxOut.textContent=els.hMax.value;
-  els.sMinOut.textContent=els.sMin.value+'%'; els.sMaxOut.textContent=els.sMax.value+'%';
-  els.bMinOut.textContent=els.bMin.value+'%'; els.bMaxOut.textContent=els.bMax.value+'%';
-  const {r,g,b}=HSBtoRGB(ri(state.hMin,state.hMax), rf(state.sMin,state.sMax), rf(state.bMin,state.bMax));
-  swatch.style.background=`rgb(${r},${g},${b})`;
-}
-[els.hMin,els.hMax,els.sMin,els.sMax,els.bMin,els.bMax].forEach(e=>e.addEventListener('input',updateHSB));
-updateHSB();
-
-document.querySelectorAll('input[name="matSpawn"]').forEach(r=>{
-  r.addEventListener('change', e=>{ state.spawnMaterial = e.target.value; });
-});
-
-$('spawn10').addEventListener('click',()=>{
-  const s=game.scene.keys['FXScene']; for(let i=0;i<10;i++) s.spawnBall();
-});
-$('clear').addEventListener('click',()=>{
-  const s=game.scene.keys['FXScene']; s.clearBalls();
-});
-</script>
+  </script>
 </body>
+
 </html>
