@@ -58,6 +58,14 @@
     </div>
 
     <div class="sep"></div>
+    <div class="groupTitle">尾巴尺寸</div>
+    <div class="row">
+      <label>尾巴基準</label>
+      <input type="range" id="baseScale" min="1" max="100" step="1" value="20">
+      <output id="baseScaleOut">20</output>
+    </div>
+
+    <div class="sep"></div>
     <div class="groupTitle">筆跡（風偏）參數</div>
     <div class="row"><label>風力增益</label><input type="range" id="windGain" min="0" max="0.4" step="0.01" value="0.14"><output id="windGainOut">0.14</output></div>
     <div class="row"><label>風阻尼</label><input type="range" id="windDrag" min="0.70" max="0.98" step="0.01" value="0.86"><output id="windDragOut">0.86</output></div>
@@ -102,6 +110,7 @@
     const state = {
       spawnMaterial: 'sand',
       hMin: 28, hMax: 48, sMin: .45, sMax: .90, bMin: .60, bMax: .95,
+      baseScale: 20  // 尾巴粒子基準（1–100）
     };
 
     /* ===== 三種材質（逐球邏輯 + 尾巴設定） ===== */
@@ -374,9 +383,9 @@
         const radius = 32 * newScale;
         const offset = 32 - radius;
         spr.body.setCircle(radius, offset, offset);
-        // 同步尾巴大小
+        // 同步尾巴大小（使用 baseScale）
         if (spr._emit) {
-          const baseScale = 4 * spr.scale;
+          const baseScale = state.baseScale * spr.scale;
           spr._emit.setConfig({ scale: { start: baseScale, end: baseScale * 0.5 } });
         }
       }
@@ -385,9 +394,9 @@
         if (spr._emit) { spr._emit.destroy(); spr._emit = null; }
         const cfg = Materials[mat].trailCfg(spr);
 
-        // ✅ 讓尾巴粒子大小 = 球直徑等比例（soft16 -> 64px 球 => *4）
-        const baseScale = 4 * spr.scale;
-        cfg.scale = { start: baseScale, end: baseScale * 7 };
+        // ✅ 讓尾巴粒子大小 = 全域基準 * 球尺度
+        const baseScale = state.baseScale * spr.scale;
+        cfg.scale = { start: baseScale, end: baseScale * 0.5 };
 
         const e = this.add.particles(0, 0, 'soft16', {
           on: true,
@@ -454,7 +463,6 @@
               let placed = 0, traveled = 0;
               while (traveled + br.spacing <= dist && placed < br.maxPerTick) {
                 traveled += br.spacing;
-                // 可加微飄：+ Phaser.Math.FloatBetween(-wob,wob)；這裡先純幾何
                 const x = ax + dirx * traveled;
                 const y = ay + diry * traveled;
                 this.spawnBall(x, y);
@@ -497,12 +505,27 @@
       scene: [FXScene]
     });
 
+    /* ===== 讓滑桿能即時更新所有尾巴 ===== */
+    function refreshAllTrails() {
+      const s = game.scene.keys['FXScene'];
+      if (!s || !s.balls) return;
+      s.balls.children.iterate(o => {
+        if (!o) return;
+        const spr = o;
+        if (spr._emit) {
+          const baseScale = state.baseScale * spr.scale;
+          spr._emit.setConfig({ scale: { start: baseScale, end: baseScale * 0.5 } });
+        }
+      });
+    }
+
     /* ===== UI 綁定 ===== */
     const $ = id => document.getElementById(id);
     const swatch = $('swatch');
     const els = {
       hMin: $('hMin'), hMax: $('hMax'), sMin: $('sMin'), sMax: $('sMax'), bMin: $('bMin'), bMax: $('bMax'),
       hMinOut: $('hMinOut'), hMaxOut: $('hMaxOut'), sMinOut: $('sMinOut'), sMaxOut: $('sMaxOut'), bMinOut: $('bMinOut'), bMaxOut: $('bMaxOut'),
+      baseScale: $('baseScale'), baseScaleOut: $('baseScaleOut'),
       windGain: $('windGain'), windGainOut: $('windGainOut'),
       windDrag: $('windDrag'), windDragOut: $('windDragOut'),
       cross: $('cross'), crossOut: $('crossOut'),
@@ -547,6 +570,13 @@
       els.interval.addEventListener('input', e => { br.interval = Math.round(+e.target.value * 1000); els.intervalOut.textContent = (+e.target.value).toFixed(2); });
       els.maxPerTick.addEventListener('input', e => { br.maxPerTick = +e.target.value; els.maxPerTickOut.textContent = e.target.value; });
 
+      // 🆕 baseScale：全域尾巴尺寸
+      els.baseScale.addEventListener('input', e => {
+        state.baseScale = +e.target.value;
+        els.baseScaleOut.textContent = e.target.value;
+        refreshAllTrails(); // 立即更新所有既有尾巴
+      });
+
       // 初始化 output 顯示
       els.windGainOut.textContent = els.windGain.value;
       els.windDragOut.textContent = els.windDrag.value;
@@ -556,6 +586,7 @@
       els.spacingOut.textContent = els.spacing.value;
       els.intervalOut.textContent = (+els.interval.value).toFixed(2);
       els.maxPerTickOut.textContent = els.maxPerTick.value;
+      els.baseScaleOut.textContent = els.baseScale.value;
     }
 
     document.querySelectorAll('input[name="matSpawn"]').forEach(r => {
